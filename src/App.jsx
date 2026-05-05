@@ -40,7 +40,7 @@ const PageWrapper = ({ session }) => {
       case '/billing': return 'Billing';
       default: 
         if (path.startsWith('/stores/')) return 'Node Analytics';
-        return 'RetailOS';
+        return 'theminimalStore';
     }
   };
 

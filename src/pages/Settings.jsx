@@ -131,13 +131,13 @@ const Settings = () => {
                      </div>
                      <div>
                         <label style={labelStyle}>Company Name</label>
-                        <input type="text" defaultValue="RetailOS Solutions" style={inputStyle} className="focus:bg-white focus:border-slate-200" />
+                        <input type="text" defaultValue="theminimalStore Solutions" style={inputStyle} className="focus:bg-white focus:border-slate-200" />
                      </div>
                      <div>
                         <label style={labelStyle}>Email Address</label>
                         <div style={{ position: 'relative' }}>
                            <Mail style={{ position: 'absolute', left: '1rem', top: '50%', transform: 'translateY(-50%)', opacity: 0.4 }} size={16} />
-                           <input type="email" defaultValue="arjun@retailos.com" style={{ ...inputStyle, paddingLeft: '2.75rem' }} className="focus:bg-white focus:border-slate-200" />
+                           <input type="email" defaultValue="admin@theminimalstore.com" style={{ ...inputStyle, paddingLeft: '2.75rem' }} className="focus:bg-white focus:border-slate-200" />
                         </div>
                      </div>
                      <div>

@@ -93,7 +93,7 @@ const Login = ({ onLogin }) => {
           <div style={{ background: '#111111', color: 'white', padding: '10px', borderRadius: '12px' }}>
             <ShoppingCart size={24} />
           </div>
-          <span style={{ fontSize: '1.5rem', fontWeight: 900, letterSpacing: '-0.02em', color: '#111111' }}>RetailOS</span>
+          <span style={{ fontSize: '1.5rem', fontWeight: 900, letterSpacing: '-0.02em', color: '#111111' }}>theminimalStore</span>
         </div>
 
         <div style={{ textAlign: 'center', marginBottom: '2rem' }}>
@@ -149,7 +149,7 @@ const Login = ({ onLogin }) => {
                     type="email"
                     value={email}
                     onChange={(e) => setEmail(e.target.value)}
-                    placeholder="admin@retailos.com"
+                    placeholder="admin@theminimalstore.com"
                     required
                     style={{
                       width: '100%',
