@@ -1,46 +1,74 @@
 import { useState } from 'react';
 import { supabase } from '../lib/supabase';
-import { LogIn, ShoppingCart, Lock } from 'lucide-react';
+import { LogIn, ShoppingCart, Lock, Mail, KeyRound, UserPlus } from 'lucide-react';
 
 const Login = ({ onLogin }) => {
+  const [mode, setMode] = useState('login'); // 'login', 'signup', 'verify'
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
+  const [confirmPassword, setConfirmPassword] = useState('');
+  const [otp, setOtp] = useState('');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
+  const [successMsg, setSuccessMsg] = useState(null);
 
-  const handleLogin = async (e) => {
+  const handleAuth = async (e) => {
     e.preventDefault();
     setLoading(true);
     setError(null);
-    
-    // Auto-create account if it doesn't exist for demo purposes
-    // In production, you would handle sign up and sign in separately
-    const { data, error: signInError } = await supabase.auth.signInWithPassword({
-      email,
-      password,
-    });
+    setSuccessMsg(null);
 
-    if (signInError) {
-      if (signInError.message.includes('Invalid login credentials')) {
-         // Attempt sign up if user doesn't exist
-         const { error: signUpError } = await supabase.auth.signUp({
-            email,
-            password,
-         });
-         if (signUpError) {
-             setError(signUpError.message);
-         } else {
-             // Successful sign up, we wait for session
-             setError('Account created! Please sign in again or check your email for confirmation if required.');
-         }
-      } else {
-         setError(signInError.message);
+    try {
+      if (mode === 'login') {
+        const { data, error: signInError } = await supabase.auth.signInWithPassword({
+          email,
+          password,
+        });
+
+        if (signInError) throw signInError;
+        if (data.session) onLogin(data.session);
+
+      } else if (mode === 'signup') {
+        if (password !== confirmPassword) {
+          throw new Error('Passwords do not match');
+        }
+
+        const { error: signUpError } = await supabase.auth.signUp({
+          email,
+          password,
+        });
+
+        if (signUpError) throw signUpError;
+        
+        setMode('verify');
+        setSuccessMsg('Verification code sent! Please check your email.');
+
+      } else if (mode === 'verify') {
+        const { data, error: verifyError } = await supabase.auth.verifyOtp({
+          email,
+          token: otp,
+          type: 'signup',
+        });
+
+        if (verifyError) throw verifyError;
+        if (data.session) onLogin(data.session);
       }
-    } else if (data.session) {
-      onLogin(data.session);
+    } catch (err) {
+      setError(err.message);
+    } finally {
+      setLoading(false);
     }
-    
-    setLoading(false);
+  };
+
+  const switchMode = (newMode) => {
+    setMode(newMode);
+    setError(null);
+    setSuccessMsg(null);
+    setOtp('');
+    setConfirmPassword('');
+    if (newMode !== 'verify') {
+        // Keep email and password if toggling between login/signup
+    }
   };
 
   return (
@@ -69,8 +97,14 @@ const Login = ({ onLogin }) => {
         </div>
 
         <div style={{ textAlign: 'center', marginBottom: '2rem' }}>
-          <h1 style={{ fontSize: '1.25rem', fontWeight: 800, color: '#111111', marginBottom: '0.5rem' }}>Welcome Back</h1>
-          <p style={{ color: '#64748B', fontSize: '0.875rem' }}>Enter your credentials to access the dashboard</p>
+          <h1 style={{ fontSize: '1.25rem', fontWeight: 800, color: '#111111', marginBottom: '0.5rem' }}>
+            {mode === 'login' ? 'Welcome Back' : mode === 'signup' ? 'Create Account' : 'Verify Email'}
+          </h1>
+          <p style={{ color: '#64748B', fontSize: '0.875rem' }}>
+            {mode === 'login' ? 'Enter your credentials to access the dashboard' : 
+             mode === 'signup' ? 'Sign up for a new retailer account' : 
+             `Enter the 6-digit OTP sent to ${email}`}
+          </p>
         </div>
 
         {error && (
@@ -88,62 +122,151 @@ const Login = ({ onLogin }) => {
           </div>
         )}
 
-        <form onSubmit={handleLogin} style={{ display: 'flex', flexDirection: 'column', gap: '1.25rem' }}>
-          <div>
-            <label style={{ display: 'block', fontSize: '0.8125rem', fontWeight: 700, color: '#475569', marginBottom: '0.5rem' }}>
-              Work Email
-            </label>
-            <input
-              type="email"
-              value={email}
-              onChange={(e) => setEmail(e.target.value)}
-              placeholder="admin@retailos.com"
-              required
-              style={{
-                width: '100%',
-                padding: '0.875rem 1rem',
-                borderRadius: '12px',
-                border: '1px solid #E2E8F0',
-                fontSize: '0.9375rem',
-                color: '#111111',
-                outline: 'none',
-                transition: 'border-color 0.2s',
-                boxSizing: 'border-box'
-              }}
-              onFocus={e => e.target.style.borderColor = '#111111'}
-              onBlur={e => e.target.style.borderColor = '#E2E8F0'}
-            />
+        {successMsg && (
+          <div style={{
+            background: '#ECFDF5',
+            color: '#10B981',
+            padding: '1rem',
+            borderRadius: '12px',
+            fontSize: '0.875rem',
+            fontWeight: 600,
+            marginBottom: '1.5rem',
+            textAlign: 'center'
+          }}>
+            {successMsg}
           </div>
+        )}
 
-          <div>
-            <label style={{ display: 'block', fontSize: '0.8125rem', fontWeight: 700, color: '#475569', marginBottom: '0.5rem' }}>
-              Password
-            </label>
-            <div style={{ position: 'relative' }}>
-              <input
-                type="password"
-                value={password}
-                onChange={(e) => setPassword(e.target.value)}
-                placeholder="••••••••"
-                required
-                style={{
-                  width: '100%',
-                  padding: '0.875rem 1rem',
-                  paddingLeft: '2.75rem',
-                  borderRadius: '12px',
-                  border: '1px solid #E2E8F0',
-                  fontSize: '0.9375rem',
-                  color: '#111111',
-                  outline: 'none',
-                  transition: 'border-color 0.2s',
-                  boxSizing: 'border-box'
-                }}
-                onFocus={e => e.target.style.borderColor = '#111111'}
-                onBlur={e => e.target.style.borderColor = '#E2E8F0'}
-              />
-              <Lock size={18} color="#94A3B8" style={{ position: 'absolute', left: '1rem', top: '50%', transform: 'translateY(-50%)' }} />
+        <form onSubmit={handleAuth} style={{ display: 'flex', flexDirection: 'column', gap: '1.25rem' }}>
+          {(mode === 'login' || mode === 'signup') && (
+            <>
+              <div>
+                <label style={{ display: 'block', fontSize: '0.8125rem', fontWeight: 700, color: '#475569', marginBottom: '0.5rem' }}>
+                  Work Email
+                </label>
+                <div style={{ position: 'relative' }}>
+                  <input
+                    type="email"
+                    value={email}
+                    onChange={(e) => setEmail(e.target.value)}
+                    placeholder="admin@retailos.com"
+                    required
+                    style={{
+                      width: '100%',
+                      padding: '0.875rem 1rem',
+                      paddingLeft: '2.75rem',
+                      borderRadius: '12px',
+                      border: '1px solid #E2E8F0',
+                      fontSize: '0.9375rem',
+                      color: '#111111',
+                      outline: 'none',
+                      transition: 'border-color 0.2s',
+                      boxSizing: 'border-box'
+                    }}
+                    onFocus={e => e.target.style.borderColor = '#111111'}
+                    onBlur={e => e.target.style.borderColor = '#E2E8F0'}
+                  />
+                  <Mail size={18} color="#94A3B8" style={{ position: 'absolute', left: '1rem', top: '50%', transform: 'translateY(-50%)' }} />
+                </div>
+              </div>
+
+              <div>
+                <label style={{ display: 'block', fontSize: '0.8125rem', fontWeight: 700, color: '#475569', marginBottom: '0.5rem' }}>
+                  Password
+                </label>
+                <div style={{ position: 'relative' }}>
+                  <input
+                    type="password"
+                    value={password}
+                    onChange={(e) => setPassword(e.target.value)}
+                    placeholder="••••••••"
+                    required
+                    style={{
+                      width: '100%',
+                      padding: '0.875rem 1rem',
+                      paddingLeft: '2.75rem',
+                      borderRadius: '12px',
+                      border: '1px solid #E2E8F0',
+                      fontSize: '0.9375rem',
+                      color: '#111111',
+                      outline: 'none',
+                      transition: 'border-color 0.2s',
+                      boxSizing: 'border-box'
+                    }}
+                    onFocus={e => e.target.style.borderColor = '#111111'}
+                    onBlur={e => e.target.style.borderColor = '#E2E8F0'}
+                  />
+                  <Lock size={18} color="#94A3B8" style={{ position: 'absolute', left: '1rem', top: '50%', transform: 'translateY(-50%)' }} />
+                </div>
+              </div>
+            </>
+          )}
+
+          {mode === 'signup' && (
+            <div>
+              <label style={{ display: 'block', fontSize: '0.8125rem', fontWeight: 700, color: '#475569', marginBottom: '0.5rem' }}>
+                Confirm Password
+              </label>
+              <div style={{ position: 'relative' }}>
+                <input
+                  type="password"
+                  value={confirmPassword}
+                  onChange={(e) => setConfirmPassword(e.target.value)}
+                  placeholder="••••••••"
+                  required
+                  style={{
+                    width: '100%',
+                    padding: '0.875rem 1rem',
+                    paddingLeft: '2.75rem',
+                    borderRadius: '12px',
+                    border: '1px solid #E2E8F0',
+                    fontSize: '0.9375rem',
+                    color: '#111111',
+                    outline: 'none',
+                    transition: 'border-color 0.2s',
+                    boxSizing: 'border-box'
+                  }}
+                  onFocus={e => e.target.style.borderColor = '#111111'}
+                  onBlur={e => e.target.style.borderColor = '#E2E8F0'}
+                />
+                <Lock size={18} color="#94A3B8" style={{ position: 'absolute', left: '1rem', top: '50%', transform: 'translateY(-50%)' }} />
+              </div>
             </div>
-          </div>
+          )}
+
+          {mode === 'verify' && (
+            <div>
+              <label style={{ display: 'block', fontSize: '0.8125rem', fontWeight: 700, color: '#475569', marginBottom: '0.5rem' }}>
+                6-Digit OTP
+              </label>
+              <div style={{ position: 'relative' }}>
+                <input
+                  type="text"
+                  value={otp}
+                  onChange={(e) => setOtp(e.target.value.replace(/\D/g, '').slice(0, 6))}
+                  placeholder="123456"
+                  required
+                  style={{
+                    width: '100%',
+                    padding: '0.875rem 1rem',
+                    paddingLeft: '2.75rem',
+                    borderRadius: '12px',
+                    border: '1px solid #E2E8F0',
+                    fontSize: '1.25rem',
+                    letterSpacing: '0.2em',
+                    color: '#111111',
+                    outline: 'none',
+                    transition: 'border-color 0.2s',
+                    boxSizing: 'border-box',
+                    textAlign: 'center'
+                  }}
+                  onFocus={e => e.target.style.borderColor = '#111111'}
+                  onBlur={e => e.target.style.borderColor = '#E2E8F0'}
+                />
+                <KeyRound size={18} color="#94A3B8" style={{ position: 'absolute', left: '1rem', top: '50%', transform: 'translateY(-50%)' }} />
+              </div>
+            </div>
+          )}
 
           <button
             type="submit"
@@ -166,15 +289,37 @@ const Login = ({ onLogin }) => {
               opacity: loading ? 0.8 : 1
             }}
           >
-            {loading ? 'Authenticating...' : (
+            {loading ? 'Processing...' : (
               <>
-                <LogIn size={18} />
-                Secure Login
+                {mode === 'login' ? <LogIn size={18} /> : mode === 'signup' ? <UserPlus size={18} /> : <KeyRound size={18} />}
+                {mode === 'login' ? 'Secure Login' : mode === 'signup' ? 'Create Account' : 'Verify OTP'}
               </>
             )}
           </button>
         </form>
         
+        <div style={{ textAlign: 'center', marginTop: '1.5rem' }}>
+          {mode === 'login' ? (
+            <button 
+              onClick={() => switchMode('signup')}
+              style={{ background: 'none', border: 'none', color: '#64748B', fontSize: '0.875rem', fontWeight: 600, cursor: 'pointer', padding: '0.5rem' }}>
+              Don't have an account? <span style={{ color: '#111111' }}>Sign up</span>
+            </button>
+          ) : mode === 'signup' ? (
+            <button 
+              onClick={() => switchMode('login')}
+              style={{ background: 'none', border: 'none', color: '#64748B', fontSize: '0.875rem', fontWeight: 600, cursor: 'pointer', padding: '0.5rem' }}>
+              Already have an account? <span style={{ color: '#111111' }}>Log in</span>
+            </button>
+          ) : (
+            <button 
+              onClick={() => switchMode('signup')}
+              style={{ background: 'none', border: 'none', color: '#64748B', fontSize: '0.875rem', fontWeight: 600, cursor: 'pointer', padding: '0.5rem' }}>
+              Didn't receive code? <span style={{ color: '#111111' }}>Go back</span>
+            </button>
+          )}
+        </div>
+
         <p style={{ textAlign: 'center', marginTop: '2rem', fontSize: '0.75rem', color: '#94A3B8', fontWeight: 500 }}>
           Protected by Supabase Auth Integration
         </p>
