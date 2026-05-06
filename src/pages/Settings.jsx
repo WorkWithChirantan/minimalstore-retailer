@@ -1,11 +1,51 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import {
    User, Bell, Shield, Globe,
-   Mail, Phone, Lock, ChevronRight
+   Mail, Phone, Lock, ChevronRight, Copy
 } from 'lucide-react';
+import { useDashboard } from '../context/DashboardContext';
+import { supabase } from '../lib/supabase';
 
 const Settings = () => {
    const [activeTab, setActiveTab] = useState('profile');
+   const { profile, session, setProfile } = useDashboard();
+   const [formData, setFormData] = useState({
+      full_name: profile?.full_name || '',
+      company_name: profile?.company_name || '',
+      phone: profile?.phone || '',
+   });
+   const [saving, setSaving] = useState(false);
+   const [message, setMessage] = useState('');
+
+   useEffect(() => {
+      if (profile) {
+         setFormData({
+            full_name: profile.full_name || '',
+            company_name: profile.company_name || '',
+            phone: profile.phone || '',
+         });
+      }
+   }, [profile]);
+
+   const handleSave = async () => {
+      setSaving(true);
+      setMessage('');
+      try {
+         const { error } = await supabase
+            .from('profiles')
+            .update(formData)
+            .eq('id', session.user.id);
+            
+         if (error) throw error;
+         setProfile({ ...profile, ...formData });
+         setMessage('Profile updated successfully!');
+         setTimeout(() => setMessage(''), 3000);
+      } catch (err) {
+         setMessage(`Error: ${err.message}`);
+      } finally {
+         setSaving(false);
+      }
+   };
 
    const actionBtnStyle = {
       display: 'flex',
@@ -78,9 +118,16 @@ const Settings = () => {
             <div>
                <h1 style={{ fontSize: '2.5rem', fontWeight: 900, letterSpacing: '-0.04em', color: '#111111' }}>General Settings</h1>
                <p style={{ color: '#64748B', fontSize: '1rem', marginTop: '0.5rem', fontWeight: 500 }}>Manage your profile, notifications, and security preferences.</p>
+               {message && <p style={{ color: message.includes('Error') ? '#EF4444' : '#10B981', fontWeight: 700, marginTop: '0.5rem' }}>{message}</p>}
             </div>
-            <button style={primaryBtnStyle} onMouseOver={e => e.currentTarget.style.background = '#000000'} onMouseOut={e => e.currentTarget.style.background = '#111111'}>
-               Save Changes
+            <button 
+               onClick={handleSave} 
+               disabled={saving}
+               style={{...primaryBtnStyle, opacity: saving ? 0.7 : 1}} 
+               onMouseOver={e => e.currentTarget.style.background = '#000000'} 
+               onMouseOut={e => e.currentTarget.style.background = '#111111'}
+            >
+               {saving ? 'Saving...' : 'Save Changes'}
             </button>
          </div>
 
@@ -127,25 +174,42 @@ const Settings = () => {
                   <div className="grid grid-cols-2 gap-6">
                      <div>
                         <label style={labelStyle}>Full Name</label>
-                        <input type="text" defaultValue="Arjun Kapoor" style={inputStyle} className="focus:bg-white focus:border-slate-200" />
+                        <input type="text" value={formData.full_name} onChange={e => setFormData({...formData, full_name: e.target.value})} style={inputStyle} className="focus:bg-white focus:border-slate-200" />
                      </div>
                      <div>
                         <label style={labelStyle}>Company Name</label>
-                        <input type="text" defaultValue="theminimalStore Solutions" style={inputStyle} className="focus:bg-white focus:border-slate-200" />
+                        <input type="text" value={formData.company_name} onChange={e => setFormData({...formData, company_name: e.target.value})} style={inputStyle} className="focus:bg-white focus:border-slate-200" />
                      </div>
                      <div>
-                        <label style={labelStyle}>Email Address</label>
+                        <label style={labelStyle}>Email Address (Read Only)</label>
                         <div style={{ position: 'relative' }}>
                            <Mail style={{ position: 'absolute', left: '1rem', top: '50%', transform: 'translateY(-50%)', opacity: 0.4 }} size={16} />
-                           <input type="email" defaultValue="admin@theminimalstore.com" style={{ ...inputStyle, paddingLeft: '2.75rem' }} className="focus:bg-white focus:border-slate-200" />
+                           <input type="email" value={session?.user?.email || ''} readOnly style={{ ...inputStyle, paddingLeft: '2.75rem', opacity: 0.7, cursor: 'not-allowed' }} />
                         </div>
                      </div>
                      <div>
                         <label style={labelStyle}>Phone Number</label>
                         <div style={{ position: 'relative' }}>
                            <Phone style={{ position: 'absolute', left: '1rem', top: '50%', transform: 'translateY(-50%)', opacity: 0.4 }} size={16} />
-                           <input type="tel" defaultValue="+91 98765 43210" style={{ ...inputStyle, paddingLeft: '2.75rem' }} className="focus:bg-white focus:border-slate-200" />
+                           <input type="tel" value={formData.phone} onChange={e => setFormData({...formData, phone: e.target.value})} style={{ ...inputStyle, paddingLeft: '2.75rem' }} className="focus:bg-white focus:border-slate-200" />
                         </div>
+                     </div>
+                     
+                     <div className="col-span-2 mt-4 pt-6" style={{ borderTop: '1px solid #F1F5F9' }}>
+                        <label style={labelStyle}>Your Store ID (API Key for Self-Checkout PWA)</label>
+                        <div style={{ display: 'flex', gap: '0.5rem' }}>
+                           <input type="text" value={session?.user?.id || ''} readOnly style={{ ...inputStyle, fontFamily: 'monospace', opacity: 0.8, flex: 1 }} />
+                           <button 
+                             onClick={() => navigator.clipboard.writeText(session?.user?.id || '')}
+                             style={{ ...actionBtnStyle, background: '#F8FAFC', padding: '0.75rem' }}
+                             title="Copy to clipboard"
+                           >
+                             <Copy size={16} />
+                           </button>
+                        </div>
+                        <p style={{ fontSize: '0.75rem', color: '#64748B', marginTop: '0.5rem', fontWeight: 600 }}>
+                           Paste this ID into the Customer PWA code to securely link scanners to your dashboard.
+                        </p>
                      </div>
                   </div>
                </div>

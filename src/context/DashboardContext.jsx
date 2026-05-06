@@ -1,28 +1,18 @@
 import { createContext, useCallback, useContext, useEffect, useRef, useState } from 'react';
-import { fetchSyncedTransactions, subscribeToCheckoutSync } from '../services/checkoutSync';
+import { fetchSyncedTransactions, subscribeToCheckoutSync, fetchProducts } from '../services/checkoutSync';
+import { supabase } from '../lib/supabase';
 
 const DashboardContext = createContext();
 
 export const useDashboard = () => useContext(DashboardContext);
 
-const INITIAL_PRODUCTS = [];
-
-const INITIAL_STORES = [];
-
-const INITIAL_INVENTORY = INITIAL_PRODUCTS.reduce((stock, product, index) => ({
-  ...stock,
-  [product.id]: 24 + ((index * 7) % 42),
-}), {});
-
-const getInitialTransactions = () => [];
-
-const getMainItem = (tx) => tx.itemsList?.[0] || { name: 'Item', quantity: tx.items || 1 };
-
-export const DashboardProvider = ({ children }) => {
-  const [products, setProducts] = useState(INITIAL_PRODUCTS);
-  const [stores, setStores] = useState(INITIAL_STORES);
-  const [inventory, setInventory] = useState(INITIAL_INVENTORY);
-  const [transactions, setTransactions] = useState(getInitialTransactions);
+export const DashboardProvider = ({ children, session }) => {
+  const [profile, setProfile] = useState(null);
+  const [profileLoaded, setProfileLoaded] = useState(false);
+  const [products, setProducts] = useState([]);
+  const [stores, setStores] = useState([]);
+  const [inventory, setInventory] = useState({});
+  const [transactions, setTransactions] = useState([]);
   const [liveFeed, setLiveFeed] = useState([]);
   const [stats, setStats] = useState({
     totalSales: 0,
@@ -31,7 +21,27 @@ export const DashboardProvider = ({ children }) => {
     avgCart: 0,
     totalProductsSold: 0,
   });
-  const processedTransactionIds = useRef(new Set(getInitialTransactions().map((tx) => tx.id)));
+  const processedTransactionIds = useRef(new Set());
+
+  // Fetch Profile
+  useEffect(() => {
+    if (!session?.user?.id) return;
+    
+    const loadProfile = async () => {
+      const { data, error } = await supabase
+        .from('profiles')
+        .select('*')
+        .eq('id', session.user.id)
+        .single();
+        
+      if (!error && data) {
+        setProfile(data);
+      }
+      setProfileLoaded(true);
+    };
+    
+    loadProfile();
+  }, [session]);
 
   const processNewTransaction = useCallback((tx) => {
     if (!tx?.id || processedTransactionIds.current.has(tx.id)) return;
@@ -66,7 +76,7 @@ export const DashboardProvider = ({ children }) => {
       };
     });
 
-    const mainItem = getMainItem(tx);
+    const mainItem = tx.itemsList?.[0] || { name: 'Item', quantity: tx.items || 1 };
     setLiveFeed((prev) => [
       {
         id: `${tx.id}-${Date.now()}`,
@@ -80,16 +90,17 @@ export const DashboardProvider = ({ children }) => {
   }, []);
 
   useEffect(() => {
+    // Only load dashboard data if profile is loaded and exists
+    if (!profile) return;
+
     fetchSyncedTransactions()
       .then((snapshot) => snapshot.forEach(processNewTransaction))
       .catch((error) => console.warn('Initial checkout sync failed', error));
 
-    // Wait, the products also need to be fetched and stored so they show up in tables
-    import('../services/checkoutSync').then(({ fetchProducts }) => {
-      fetchProducts().then(data => {
-        setProducts(data);
-      }).catch(err => console.warn('Failed to fetch initial products', err));
-    });
+    fetchProducts().then(data => {
+      setProducts(data);
+      setInventory(data.reduce((acc, p) => ({ ...acc, [p.id]: p.quantity }), {}));
+    }).catch(err => console.warn('Failed to fetch initial products', err));
 
     return subscribeToCheckoutSync({
       onSnapshot: (snapshot) => snapshot.forEach(processNewTransaction),
@@ -97,18 +108,7 @@ export const DashboardProvider = ({ children }) => {
       onTransaction: processNewTransaction,
       onError: (error) => console.warn('Checkout sync stream interrupted', error),
     });
-  }, [processNewTransaction]);
-
-  useEffect(() => {
-    const handleStorageChange = (e) => {
-      if (e.key === 'scaas_transactions' && e.newValue) {
-        processNewTransaction(JSON.parse(e.newValue));
-      }
-    };
-
-    window.addEventListener('storage', handleStorageChange);
-    return () => window.removeEventListener('storage', handleStorageChange);
-  }, [processNewTransaction]);
+  }, [processNewTransaction, profile]);
 
   const addStore = useCallback((storeData) => {
     setStores((prev) => [...prev, {
@@ -126,12 +126,9 @@ export const DashboardProvider = ({ children }) => {
     setStores((prev) => prev.filter((s) => s.id !== id));
   }, []);
 
-  useEffect(() => {
-    // Empty dependency array, mock interval removed.
-  }, [products, stores, processNewTransaction]);
-
   return (
     <DashboardContext.Provider value={{
+      profile, setProfile, profileLoaded, session,
       products, setProducts,
       stores, setStores,
       inventory, setInventory,

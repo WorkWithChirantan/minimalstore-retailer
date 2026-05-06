@@ -1,9 +1,12 @@
 import { Bell, Search, User, Settings, HelpCircle, ChevronDown, LogOut } from 'lucide-react';
 import { useState, useRef, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { useDashboard } from '../context/DashboardContext';
+import { supabase } from '../lib/supabase';
 
 const TopNav = ({ title }) => {
   const navigate = useNavigate();
+  const { profile } = useDashboard();
   const [showNotifications, setShowNotifications] = useState(false);
   const [showProfile, setShowProfile] = useState(false);
   const navRef = useRef(null);
@@ -120,15 +123,15 @@ const TopNav = ({ title }) => {
                 fontWeight: 700, 
                 fontSize: '0.875rem' 
               }}>
-                AK
+                {profile?.full_name ? profile.full_name.split(' ').map(n => n[0]).join('').substring(0, 2).toUpperCase() : '??'}
               </div>
               <div style={{ textAlign: 'left' }} className="hidden lg:block">
                 <div style={{ display: 'flex', alignItems: 'center', gap: '0.25rem' }}>
-                  <span style={{ fontSize: '0.875rem', fontWeight: 800, color: 'var(--text-main)' }}>Arjun Kapoor</span>
+                  <span style={{ fontSize: '0.875rem', fontWeight: 800, color: 'var(--text-main)' }}>{profile?.full_name || 'Loading...'}</span>
                   <ChevronDown size={12} style={{ color: 'var(--text-muted)', opacity: 0.5, transform: showProfile ? 'rotate(180deg)' : 'rotate(0deg)', transition: 'transform 0.2s ease' }} />
                 </div>
                 <div style={{ fontSize: '0.65rem', fontWeight: 800, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
-                  Store Owner
+                  {profile?.company_name || 'Store Owner'}
                 </div>
               </div>
             </button>
@@ -144,7 +147,7 @@ const TopNav = ({ title }) => {
                   <span style={{ fontSize: '0.8125rem', fontWeight: 600, color: '#111111' }}>Staff Access</span>
                 </button>
                 <div style={{ height: '1px', background: '#E2E8F0', margin: '0.25rem 0' }}></div>
-                <button onClick={() => { alert('Logged out successfully.'); navigate('/'); setShowProfile(false); }} style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', width: '100%', padding: '0.75rem 1rem', background: 'transparent', border: 'none', borderRadius: '12px', cursor: 'pointer', textAlign: 'left', color: '#EF4444' }} onMouseOver={e => e.currentTarget.style.background = '#FEF2F2'} onMouseOut={e => e.currentTarget.style.background = 'transparent'}>
+                <button onClick={async () => { await supabase.auth.signOut(); setShowProfile(false); }} style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', width: '100%', padding: '0.75rem 1rem', background: 'transparent', border: 'none', borderRadius: '12px', cursor: 'pointer', textAlign: 'left', color: '#EF4444' }} onMouseOver={e => e.currentTarget.style.background = '#FEF2F2'} onMouseOut={e => e.currentTarget.style.background = 'transparent'}>
                   <LogOut size={16} />
                   <span style={{ fontSize: '0.8125rem', fontWeight: 600 }}>Log Out</span>
                 </button>

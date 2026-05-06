@@ -39,7 +39,7 @@ const Login = ({ onLogin }) => {
         });
 
         if (signUpError) throw signUpError;
-        
+
         setMode('verify');
         setSuccessMsg('Verification code sent! Please check your email.');
 
@@ -67,7 +67,7 @@ const Login = ({ onLogin }) => {
     setOtp('');
     setConfirmPassword('');
     if (newMode !== 'verify') {
-        // Keep email and password if toggling between login/signup
+      // Keep email and password if toggling between login/signup
     }
   };
 
@@ -101,9 +101,9 @@ const Login = ({ onLogin }) => {
             {mode === 'login' ? 'Welcome Back' : mode === 'signup' ? 'Create Account' : 'Verify Email'}
           </h1>
           <p style={{ color: '#64748B', fontSize: '0.875rem' }}>
-            {mode === 'login' ? 'Enter your credentials to access the dashboard' : 
-             mode === 'signup' ? 'Sign up for a new retailer account' : 
-             `Enter the 6-digit OTP sent to ${email}`}
+            {mode === 'login' ? 'Enter your credentials to access the dashboard' :
+              mode === 'signup' ? 'Sign up for a new retailer account' :
+                `Enter the 6-digit OTP sent to ${email}`}
           </p>
         </div>
 
@@ -297,22 +297,22 @@ const Login = ({ onLogin }) => {
             )}
           </button>
         </form>
-        
+
         <div style={{ textAlign: 'center', marginTop: '1.5rem' }}>
           {mode === 'login' ? (
-            <button 
+            <button
               onClick={() => switchMode('signup')}
               style={{ background: 'none', border: 'none', color: '#64748B', fontSize: '0.875rem', fontWeight: 600, cursor: 'pointer', padding: '0.5rem' }}>
               Don't have an account? <span style={{ color: '#111111' }}>Sign up</span>
             </button>
           ) : mode === 'signup' ? (
-            <button 
+            <button
               onClick={() => switchMode('login')}
               style={{ background: 'none', border: 'none', color: '#64748B', fontSize: '0.875rem', fontWeight: 600, cursor: 'pointer', padding: '0.5rem' }}>
               Already have an account? <span style={{ color: '#111111' }}>Log in</span>
             </button>
           ) : (
-            <button 
+            <button
               onClick={() => switchMode('signup')}
               style={{ background: 'none', border: 'none', color: '#64748B', fontSize: '0.875rem', fontWeight: 600, cursor: 'pointer', padding: '0.5rem' }}>
               Didn't receive code? <span style={{ color: '#111111' }}>Go back</span>

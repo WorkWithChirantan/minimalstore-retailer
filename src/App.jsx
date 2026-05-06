@@ -18,11 +18,13 @@ import Settings from './pages/Settings';
 import Billing from './pages/Billing';
 import StoreAnalytics from './pages/StoreAnalytics';
 import Login from './pages/Login';
+import OnboardingModal from './components/OnboardingModal';
 
 import './App.css';
 
 const PageWrapper = ({ session }) => {
   const location = useLocation();
+  const { profile, profileLoaded, setProfile } = useDashboard();
   
   // Map path to title
   const getPageTitle = (path) => {
@@ -44,40 +46,46 @@ const PageWrapper = ({ session }) => {
     }
   };
 
-  const handleLogout = async () => {
-    await supabase.auth.signOut();
-  };
-
   return (
-    <div className="layout-container">
-      <Sidebar />
-      <main className="main-content">
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+    <>
+      {profileLoaded && !profile && (
+        <OnboardingModal 
+          session={session} 
+          onComplete={() => {
+            // Re-fetch or hard reload to pick up the new profile
+            window.location.reload();
+          }} 
+        />
+      )}
+      <div className="layout-container">
+        <Sidebar />
+        <main className="main-content">
           <TopNav title={getPageTitle(location.pathname)} />
-          <button 
-            onClick={handleLogout}
-            style={{ marginRight: '2rem', padding: '8px 16px', background: '#FEF2F2', color: '#EF4444', border: 'none', borderRadius: '8px', fontWeight: 'bold', cursor: 'pointer' }}>
-            Logout
-          </button>
-        </div>
-        <div className="workspace">
-          <Routes>
-            <Route path="/" element={<Overview />} />
-            <Route path="/stores" element={<StoreManagement />} />
-            <Route path="/stores/:storeId" element={<StoreAnalytics />} />
-            <Route path="/products" element={<ProductManagement />} />
-            <Route path="/inventory" element={<InventoryManagement />} />
-            <Route path="/transactions" element={<Transactions />} />
-            <Route path="/analytics" element={<Analytics />} />
-            <Route path="/promotions" element={<Promotions />} />
-            <Route path="/branding" element={<Branding />} />
-            <Route path="/staff" element={<StaffAccess />} />
-            <Route path="/settings" element={<Settings />} />
-            <Route path="/billing" element={<Billing />} />
-          </Routes>
-        </div>
-      </main>
-    </div>
+          <div className="workspace">
+            {profile ? (
+              <Routes>
+                <Route path="/" element={<Overview />} />
+                <Route path="/stores" element={<StoreManagement />} />
+                <Route path="/stores/:storeId" element={<StoreAnalytics />} />
+                <Route path="/products" element={<ProductManagement />} />
+                <Route path="/inventory" element={<InventoryManagement />} />
+                <Route path="/transactions" element={<Transactions />} />
+                <Route path="/analytics" element={<Analytics />} />
+                <Route path="/promotions" element={<Promotions />} />
+                <Route path="/branding" element={<Branding />} />
+                <Route path="/staff" element={<StaffAccess />} />
+                <Route path="/settings" element={<Settings />} />
+                <Route path="/billing" element={<Billing />} />
+              </Routes>
+            ) : (
+              <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: '100%' }}>
+                 <p style={{ color: '#64748B', fontWeight: 600 }}>Loading Dashboard...</p>
+              </div>
+            )}
+          </div>
+        </main>
+      </div>
+    </>
   );
 };
 
