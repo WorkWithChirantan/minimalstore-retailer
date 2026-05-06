@@ -1,3 +1,4 @@
+/* eslint-disable react-refresh/only-export-components */
 import { createContext, useCallback, useContext, useEffect, useRef, useState } from 'react';
 import { fetchSyncedTransactions, subscribeToCheckoutSync, fetchProducts } from '../services/checkoutSync';
 import { supabase } from '../lib/supabase';

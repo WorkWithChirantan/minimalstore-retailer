@@ -3,7 +3,7 @@ import { BrowserRouter as Router, Routes, Route, useLocation } from 'react-route
 import { supabase } from './lib/supabase';
 import Sidebar from './components/Sidebar';
 import TopNav from './components/TopNav';
-import { DashboardProvider } from './context/DashboardContext';
+import { DashboardProvider, useDashboard } from './context/DashboardContext';
 
 import Overview from './pages/Overview';
 import StoreManagement from './pages/StoreManagement';
@@ -24,7 +24,7 @@ import './App.css';
 
 const PageWrapper = ({ session }) => {
   const location = useLocation();
-  const { profile, profileLoaded, setProfile } = useDashboard();
+  const { profile, profileLoaded } = useDashboard();
   
   // Map path to title
   const getPageTitle = (path) => {
@@ -111,7 +111,7 @@ function App() {
   }
 
   return (
-    <DashboardProvider>
+    <DashboardProvider session={session}>
       <Router>
         <PageWrapper session={session} />
       </Router>

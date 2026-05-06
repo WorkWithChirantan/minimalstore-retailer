@@ -1,3 +1,4 @@
+import { createElement } from 'react';
 import {
   AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer,
   BarChart, Bar
@@ -7,11 +8,11 @@ import { TrendingUp, Users, ShoppingBag, DollarSign, Activity, ArrowUpRight, Arr
 import { jsPDF } from 'jspdf';
 import autoTable from 'jspdf-autotable';
 
-const StatCard = ({ label, value, icon: Icon, change, up }) => (
+const StatCard = ({ label, value, icon, change, up }) => (
   <div style={{ background: 'white', padding: '1.5rem', borderRadius: '24px', border: '1px solid #E2E8F0', boxShadow: '0 1px 3px rgba(0,0,0,0.02)' }}>
     <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '1.5rem' }}>
       <div style={{ background: '#F8FAFC', padding: '10px', borderRadius: '14px', color: '#111111' }}>
-        <Icon size={22} />
+        {createElement(icon, { size: 22 })}
       </div>
       {change && (
         <div style={{ 
@@ -39,7 +40,7 @@ const StatCard = ({ label, value, icon: Icon, change, up }) => (
 const SALES_DATA = [];
 
 const Overview = () => {
-  const { stats, liveFeed, products, stores, inventory, transactions } = useDashboard();
+  const { stats, liveFeed, products, inventory, transactions } = useDashboard();
 
   const handleExport = () => {
     const doc = new jsPDF();

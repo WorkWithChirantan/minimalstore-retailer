@@ -1,4 +1,4 @@
-import { useState, useMemo } from 'react';
+import { createElement, useMemo } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { useDashboard } from '../context/DashboardContext';
 import {
@@ -11,11 +11,11 @@ import {
   Calendar, Download, Activity, Smartphone, CreditCard, Clock
 } from 'lucide-react';
 
-const IntelligenceCard = ({ title, value, change, up, icon: Icon }) => (
+const IntelligenceCard = ({ title, value, change, up, icon }) => (
   <div className="stat-card dashboard-card">
     <div className="flex justify-between items-start mb-4">
       <div style={{ background: 'rgba(15, 23, 42, 0.05)', padding: '10px', borderRadius: '12px', color: 'var(--primary)' }}>
-        <Icon size={22} />
+        {createElement(icon, { size: 22 })}
       </div>
       {change && (
         <div className={`flex items-center gap-1 text-xs font-bold ${up ? 'text-success' : 'text-error'}`}>
@@ -49,7 +49,7 @@ const StoreAnalytics = () => {
       totalSales,
       avgBasket,
       totalOrders: storeTransactions.length,
-      activeSessions: Math.floor(Math.random() * 5) + 1 // Mock session data for the node
+      activeSessions: Math.min(5, Math.max(1, storeTransactions.length))
     };
   }, [storeTransactions]);
 
@@ -248,7 +248,7 @@ const StoreAnalytics = () => {
 };
 
 // Add missing MapPin import
-const MapPin = ({ size, color }) => (
+const MapPin = ({ size }) => (
   <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
     <path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"></path>
     <circle cx="12" cy="10" r="3"></circle>

@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { createElement, useState } from 'react';
 import {
   AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer,
   BarChart, Bar, PieChart, Pie, Cell, LineChart, Line
@@ -12,11 +12,11 @@ import {
 
 const COLORS = ['#111111', '#10B981', '#F59E0B', '#EF4444', '#8B5CF6'];
 
-const IntelligenceCard = ({ title, value, change, up, icon: Icon }) => (
+const IntelligenceCard = ({ title, value, change, up, icon }) => (
   <div style={{ background: 'white', border: '1px solid #E2E8F0', borderRadius: '24px', padding: '1.5rem', boxShadow: '0 1px 3px rgba(0,0,0,0.02)' }}>
     <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '1.25rem' }}>
       <div style={{ background: '#F8FAFC', padding: '10px', borderRadius: '14px', color: '#111111' }}>
-        <Icon size={22} />
+        {createElement(icon, { size: 22 })}
       </div>
       {change && (
         <div style={{ 

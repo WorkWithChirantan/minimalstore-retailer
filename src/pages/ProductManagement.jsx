@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import { useDashboard } from '../context/DashboardContext';
+import { createGlobalProduct, upsertInventory } from '../services/checkoutSync';
 import {
   Search, Plus, Filter, Upload, Download,
   MoreVertical, Edit2, Trash2, ArrowUpRight,
@@ -9,6 +10,22 @@ import {
 const ProductManagement = () => {
   const { products, inventory } = useDashboard();
   const [searchTerm, setSearchTerm] = useState('');
+  const [isModalOpen, setIsModalOpen] = useState(false);
+  const [formData, setFormData] = useState({
+    barcode: '',
+    product_name: '',
+    brand: '',
+    category: '',
+    unit: 'pcs',
+    quantity_per_unit: 1,
+    price: '',
+    mrp: '',
+    cost_price: '',
+    stock_quantity: '',
+    min_stock_level: 5,
+  });
+  const [saving, setSaving] = useState(false);
+  const [message, setMessage] = useState('');
 
   const filteredProducts = products.filter(p =>
     p.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
@@ -36,6 +53,53 @@ const ProductManagement = () => {
     color: 'white',
     border: 'none',
     boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.1)'
+  };
+
+  const handleSaveProduct = async (event) => {
+    event.preventDefault();
+    setSaving(true);
+    setMessage('');
+
+    try {
+      await createGlobalProduct({
+        barcode: formData.barcode,
+        product_name: formData.product_name,
+        brand: formData.brand,
+        category: formData.category,
+        unit: formData.unit,
+        quantity_per_unit: Number(formData.quantity_per_unit || 1),
+      });
+
+      await upsertInventory({
+        barcode: formData.barcode,
+        price: Number(formData.price),
+        mrp: formData.mrp === '' ? null : Number(formData.mrp),
+        cost_price: formData.cost_price === '' ? null : Number(formData.cost_price),
+        stock_quantity: Number(formData.stock_quantity || 0),
+        min_stock_level: Number(formData.min_stock_level || 0),
+        is_available: true,
+      });
+
+      setMessage('Product saved. Inventory refreshes automatically.');
+      setIsModalOpen(false);
+      setFormData({
+        barcode: '',
+        product_name: '',
+        brand: '',
+        category: '',
+        unit: 'pcs',
+        quantity_per_unit: 1,
+        price: '',
+        mrp: '',
+        cost_price: '',
+        stock_quantity: '',
+        min_stock_level: 5,
+      });
+    } catch (error) {
+      setMessage(error.message);
+    } finally {
+      setSaving(false);
+    }
   };
 
   const filterBtnStyle = {
@@ -68,12 +132,13 @@ const ProductManagement = () => {
             <Upload size={18} />
             Bulk Import
           </button>
-          <button style={primaryBtnStyle} onMouseOver={e => e.currentTarget.style.background = '#000000'} onMouseOut={e => e.currentTarget.style.background = '#111111'}>
+          <button onClick={() => setIsModalOpen(true)} style={primaryBtnStyle} onMouseOver={e => e.currentTarget.style.background = '#000000'} onMouseOut={e => e.currentTarget.style.background = '#111111'}>
             <Plus size={18} />
             Add New Product
           </button>
         </div>
       </div>
+      {message && <p style={{ marginBottom: '1rem', color: message.includes('saved') ? '#10B981' : '#EF4444', fontWeight: 800 }}>{message}</p>}
 
       <div style={{ background: 'white', borderRadius: '24px', border: '1px solid #E2E8F0', overflow: 'hidden', boxShadow: '0 1px 3px rgba(0,0,0,0.05)' }} className="animate-fade-in">
         {/* Modern Control Bar */}
@@ -190,6 +255,61 @@ const ProductManagement = () => {
           </table>
         </div>
       </div>
+
+      {isModalOpen && (
+        <div style={{
+          position: 'fixed',
+          inset: 0,
+          background: 'rgba(15, 23, 42, 0.45)',
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          zIndex: 1000,
+          padding: '1rem'
+        }}>
+          <form onSubmit={handleSaveProduct} style={{ width: '100%', maxWidth: '640px', background: 'white', borderRadius: '24px', padding: '2rem', border: '1px solid #E2E8F0', boxShadow: '0 24px 60px rgba(15,23,42,0.18)' }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', gap: '1rem', marginBottom: '1.5rem' }}>
+              <div>
+                <h2 style={{ fontSize: '1.25rem', fontWeight: 900, color: '#111111' }}>Add Product</h2>
+                <p style={{ color: '#64748B', fontSize: '0.875rem', marginTop: '0.25rem', fontWeight: 600 }}>Catalog fields are global. Price and stock are store-specific.</p>
+              </div>
+              <button type="button" onClick={() => setIsModalOpen(false)} style={{ border: 'none', background: '#F8FAFC', borderRadius: '12px', width: '40px', height: '40px', cursor: 'pointer', fontWeight: 900 }}>X</button>
+            </div>
+
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem' }}>
+              {[
+                ['barcode', 'Barcode'],
+                ['product_name', 'Product Name'],
+                ['brand', 'Brand'],
+                ['category', 'Category'],
+                ['unit', 'Unit'],
+                ['quantity_per_unit', 'Quantity Per Unit'],
+                ['price', 'Selling Price'],
+                ['mrp', 'MRP'],
+                ['cost_price', 'Cost Price'],
+                ['stock_quantity', 'Stock Quantity'],
+                ['min_stock_level', 'Minimum Stock'],
+              ].map(([key, label]) => (
+                <label key={key} style={{ display: 'flex', flexDirection: 'column', gap: '0.4rem', fontSize: '0.7rem', fontWeight: 900, color: '#64748B', textTransform: 'uppercase', letterSpacing: '0.08em' }}>
+                  {label}
+                  <input
+                    required={['barcode', 'product_name', 'price'].includes(key)}
+                    type={['price', 'mrp', 'cost_price', 'stock_quantity', 'min_stock_level', 'quantity_per_unit'].includes(key) ? 'number' : 'text'}
+                    value={formData[key]}
+                    onChange={(event) => setFormData({ ...formData, [key]: event.target.value })}
+                    style={{ padding: '0.8rem 0.9rem', borderRadius: '12px', border: '1px solid #E2E8F0', fontSize: '0.875rem', color: '#111111', fontWeight: 700, textTransform: 'none', letterSpacing: 0 }}
+                  />
+                </label>
+              ))}
+            </div>
+
+            <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '0.75rem', marginTop: '1.5rem' }}>
+              <button type="button" onClick={() => setIsModalOpen(false)} style={actionBtnStyle}>Cancel</button>
+              <button type="submit" disabled={saving} style={{ ...primaryBtnStyle, opacity: saving ? 0.7 : 1 }}>{saving ? 'Saving...' : 'Save Product'}</button>
+            </div>
+          </form>
+        </div>
+      )}
     </div>
   );
 };

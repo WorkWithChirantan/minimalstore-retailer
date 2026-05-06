@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { useDashboard } from '../context/DashboardContext';
 import { 
   Package, AlertTriangle, CheckCircle2, Truck, 
@@ -15,22 +15,32 @@ const InventoryManagement = () => {
     { id: 'RS-102', product: 'Dark Chocolate', units: 50, status: 'In Transit', date: 'Expected today' },
   ]);
   const [activeOrders, setActiveOrders] = useState([]);
+  const restockCounter = useRef(101);
 
-  // Simulate auto-restock check
-  useEffect(() => {
-    if (autoRestockEnabled) {
-      const needsRestock = products.filter(p => inventory[p.id] < restockThreshold);
-      needsRestock.forEach(p => {
-        if (!activeOrders.find(o => o.productId === p.id)) {
-          triggerRestock(p, true);
-        }
-      });
+  const updateOrderStatus = useCallback((orderId, status) => {
+    setActiveOrders(prev => prev.map(o => o.id === orderId ? { ...o, status } : o));
+    if (status === 'Delivered') {
+      setTimeout(() => {
+        setActiveOrders(prev => {
+          const order = prev.find(o => o.id === orderId);
+          if (order) {
+            setRestockHistory(h => [{ 
+              id: order.id, 
+              product: order.productName, 
+              units: order.units, 
+              status: 'Delivered', 
+              date: 'Just now' 
+            }, ...h.slice(0, 9)]);
+          }
+          return prev.filter(o => o.id !== orderId);
+        });
+      }, 3000);
     }
-  }, [inventory, autoRestockEnabled, restockThreshold, products]);
+  }, []);
 
-  const triggerRestock = (product, isAuto = false) => {
+  const triggerRestock = useCallback((product, isAuto = false) => {
     const newOrder = {
-      id: `RS-${Math.floor(Math.random() * 900) + 100}`,
+      id: `RS-${restockCounter.current++}`,
       productId: product.id,
       productName: product.name,
       units: 100,
@@ -54,28 +64,19 @@ const InventoryManagement = () => {
         [product.id]: (prev[product.id] || 0) + 100
       }));
     }, 15000);
-  };
+  }, [setInventory, updateOrderStatus]);
 
-  const updateOrderStatus = (orderId, status) => {
-    setActiveOrders(prev => prev.map(o => o.id === orderId ? { ...o, status } : o));
-    if (status === 'Delivered') {
-      setTimeout(() => {
-        setActiveOrders(prev => {
-          const order = prev.find(o => o.id === orderId);
-          if (order) {
-            setRestockHistory(h => [{ 
-              id: order.id, 
-              product: order.productName, 
-              units: order.units, 
-              status: 'Delivered', 
-              date: 'Just now' 
-            }, ...h.slice(0, 9)]);
-          }
-          return prev.filter(o => o.id !== orderId);
-        });
-      }, 3000);
+  // Simulate auto-restock check
+  useEffect(() => {
+    if (autoRestockEnabled) {
+      const needsRestock = products.filter(p => inventory[p.id] < restockThreshold);
+      needsRestock.forEach(p => {
+        if (!activeOrders.find(o => o.productId === p.id)) {
+          triggerRestock(p, true);
+        }
+      });
     }
-  };
+  }, [activeOrders, inventory, autoRestockEnabled, restockThreshold, products, triggerRestock]);
 
   const secondaryBtnStyle = {
     display: 'flex',
