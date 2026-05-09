@@ -135,3 +135,70 @@ export const subscribeToCheckoutSync = ({ onSnapshot, onInventory, onError }) =>
     window.clearInterval(intervalId);
   };
 };
+
+// ─── Store Management API ────────────────────────────────────────────────
+
+const ownerRequest = async (path, options = {}, ownerId) => {
+  if (!ownerId) throw new Error('Missing owner ID for store management');
+  return request(path, {
+    ...options,
+    headers: {
+      ...(options.headers || {}),
+      'x-owner-id': ownerId,
+    },
+  });
+};
+
+export const fetchStores = async (ownerId) => {
+  const { stores } = await ownerRequest('/stores', {}, ownerId);
+  return stores.map(mapStoreRow);
+};
+
+export const createStoreApi = async (storeData, ownerId) => {
+  const { store } = await ownerRequest('/stores', {
+    method: 'POST',
+    body: JSON.stringify({
+      name: storeData.name,
+      address: storeData.address || null,
+      qr_code: storeData.qrCode || storeData.qr_code || null,
+      subdomain: storeData.subdomain || null,
+      status: storeData.status || 'Active',
+    }),
+  }, ownerId);
+  return mapStoreRow(store);
+};
+
+export const updateStoreApi = async (id, updates, ownerId) => {
+  const payload = {};
+  if (updates.name !== undefined) payload.name = updates.name;
+  if (updates.address !== undefined) payload.address = updates.address;
+  if (updates.qrCode !== undefined) payload.qr_code = updates.qrCode;
+  if (updates.qr_code !== undefined) payload.qr_code = updates.qr_code;
+  if (updates.subdomain !== undefined) payload.subdomain = updates.subdomain;
+  if (updates.status !== undefined) payload.status = updates.status;
+
+  const { store } = await ownerRequest(`/stores/${id}`, {
+    method: 'PUT',
+    body: JSON.stringify(payload),
+  }, ownerId);
+  return mapStoreRow(store);
+};
+
+export const deleteStoreApi = async (id, ownerId) => {
+  await ownerRequest(`/stores/${id}`, {
+    method: 'DELETE',
+  }, ownerId);
+  return { deleted: true };
+};
+
+// Map Supabase store row to frontend shape
+const mapStoreRow = (row) => ({
+  id: row.id,
+  name: row.name,
+  address: row.address || '',
+  qrCode: row.qr_code || '',
+  subdomain: row.subdomain || '',
+  status: row.status || 'Active',
+  createdAt: row.created_at,
+});
+

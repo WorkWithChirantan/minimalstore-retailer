@@ -168,24 +168,42 @@ const StoreCard = ({ store, onToggle, onEdit, onDelete }) => {
 };
 
 const StoreManagement = () => {
-  const { stores, addStore, updateStore, removeStore } = useDashboard();
+  const { stores, storesLoading, storesError, addStore, updateStore, removeStore } = useDashboard();
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [formData, setFormData] = useState({ name: '', address: '', qrCode: '' });
+  const [saving, setSaving] = useState(false);
+  const [message, setMessage] = useState('');
 
-  const handleSubmit = (e) => {
+  const handleSubmit = async (e) => {
     e.preventDefault();
-    addStore(formData);
-    setFormData({ name: '', address: '', qrCode: '' });
-    setIsModalOpen(false);
+    setSaving(true);
+    setMessage('');
+    try {
+      await addStore(formData);
+      setFormData({ name: '', address: '', qrCode: '' });
+      setIsModalOpen(false);
+    } catch (err) {
+      setMessage(err.message || 'Failed to deploy node');
+    } finally {
+      setSaving(false);
+    }
   };
 
-  const handleToggle = (id, newStatus) => {
-    updateStore(id, { status: newStatus });
+  const handleToggle = async (id, newStatus) => {
+    try {
+      await updateStore(id, { status: newStatus });
+    } catch (err) {
+      console.error('Toggle failed', err);
+    }
   };
 
-  const handleDelete = (id) => {
+  const handleDelete = async (id) => {
     if (window.confirm('Are you sure you want to delete this node? This action cannot be undone.')) {
-      removeStore(id);
+      try {
+        await removeStore(id);
+      } catch (err) {
+        console.error('Delete failed', err);
+      }
     }
   };
 
@@ -206,28 +224,44 @@ const StoreManagement = () => {
         </button>
       </div>
 
-      <div className="stats-grid" style={{ gridTemplateColumns: 'repeat(auto-fill, minmax(320px, 1fr))' }}>
-        {(stores || []).map(store => (
-          <StoreCard 
-            key={store.id} 
-            store={store} 
-            onToggle={handleToggle}
-            onEdit={(s) => console.log('Edit', s)}
-            onDelete={handleDelete}
-          />
-        ))}
-
-        <div 
-          onClick={() => setIsModalOpen(true)}
-          className="stat-card flex flex-col items-center justify-center border-dashed border-2 bg-slate-50 hover:bg-white hover:border-solid hover:border-primary cursor-pointer text-muted min-h-[440px] transition-all duration-300 group rounded-[2rem]"
-        >
-          <div className="w-16 h-16 rounded-full bg-white border border-border flex items-center justify-center mb-6 group-hover:scale-110 group-hover:bg-primary group-hover:text-white transition-all duration-300">
-            <Plus size={32} />
-          </div>
-          <span className="font-extrabold text-sm uppercase tracking-widest">Expand Fleet</span>
-          <p className="text-[10px] font-bold mt-2 opacity-60 uppercase tracking-tight">Add New Physical Endpoint</p>
+      {storesError && (
+        <div style={{ marginBottom: '1.5rem', padding: '1rem 1.5rem', background: '#FEF2F2', border: '1px solid #FECACA', borderRadius: '16px', color: '#DC2626', fontSize: '0.875rem', fontWeight: 700 }} className="animate-fade-in">
+          Failed to load stores: {storesError}
         </div>
-      </div>
+      )}
+
+      {storesLoading ? (
+        <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', minHeight: '400px' }}>
+          <div style={{ textAlign: 'center' }}>
+            <div style={{ width: '40px', height: '40px', border: '3px solid #E2E8F0', borderTop: '3px solid #111111', borderRadius: '50%', animation: 'spin 1s linear infinite', margin: '0 auto 1rem' }}></div>
+            <p style={{ color: '#64748B', fontWeight: 700, fontSize: '0.8rem', textTransform: 'uppercase', letterSpacing: '0.1em' }}>Loading Fleet...</p>
+          </div>
+          <style>{`@keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }`}</style>
+        </div>
+      ) : (
+        <div className="stats-grid" style={{ gridTemplateColumns: 'repeat(auto-fill, minmax(320px, 1fr))' }}>
+          {(stores || []).map(store => (
+            <StoreCard 
+              key={store.id} 
+              store={store} 
+              onToggle={handleToggle}
+              onEdit={(s) => console.log('Edit', s)}
+              onDelete={handleDelete}
+            />
+          ))}
+
+          <div 
+            onClick={() => setIsModalOpen(true)}
+            className="stat-card flex flex-col items-center justify-center border-dashed border-2 bg-slate-50 hover:bg-white hover:border-solid hover:border-primary cursor-pointer text-muted min-h-[440px] transition-all duration-300 group rounded-[2rem]"
+          >
+            <div className="w-16 h-16 rounded-full bg-white border border-border flex items-center justify-center mb-6 group-hover:scale-110 group-hover:bg-primary group-hover:text-white transition-all duration-300">
+              <Plus size={32} />
+            </div>
+            <span className="font-extrabold text-sm uppercase tracking-widest">Expand Fleet</span>
+            <p className="text-[10px] font-bold mt-2 opacity-60 uppercase tracking-tight">Add New Physical Endpoint</p>
+          </div>
+        </div>
+      )}
 
       {/* Deploy Node Modal */}
       {isModalOpen && (
@@ -266,6 +300,12 @@ const StoreManagement = () => {
                 <X size={20} />
               </button>
             </div>
+
+            {message && (
+              <div style={{ marginBottom: '1rem', padding: '0.75rem 1rem', background: '#FEF2F2', borderRadius: '12px', color: '#DC2626', fontSize: '0.8rem', fontWeight: 700 }}>
+                {message}
+              </div>
+            )}
 
             <form onSubmit={handleSubmit} className="space-y-6">
               <div>
@@ -312,10 +352,11 @@ const StoreManagement = () => {
                 </button>
                 <button 
                   type="submit"
+                  disabled={saving}
                   className="btn-primary"
-                  style={{ flex: 1.5, justifyContent: 'center', padding: '1rem', borderRadius: '16px', fontSize: '0.875rem', fontWeight: 800 }}
+                  style={{ flex: 1.5, justifyContent: 'center', padding: '1rem', borderRadius: '16px', fontSize: '0.875rem', fontWeight: 800, opacity: saving ? 0.7 : 1 }}
                 >
-                  Confirm Deployment
+                  {saving ? 'Deploying...' : 'Confirm Deployment'}
                 </button>
               </div>
             </form>
@@ -327,3 +368,4 @@ const StoreManagement = () => {
 };
 
 export default StoreManagement;
+

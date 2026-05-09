@@ -1,6 +1,6 @@
 /* eslint-disable react-refresh/only-export-components */
 import { createContext, useCallback, useContext, useEffect, useRef, useState } from 'react';
-import { fetchSyncedTransactions, subscribeToCheckoutSync, fetchProducts } from '../services/checkoutSync';
+import { fetchSyncedTransactions, subscribeToCheckoutSync, fetchProducts, fetchStores, createStoreApi, updateStoreApi, deleteStoreApi } from '../services/checkoutSync';
 import { supabase } from '../lib/supabase';
 
 const DashboardContext = createContext();
@@ -12,6 +12,8 @@ export const DashboardProvider = ({ children, session }) => {
   const [profileLoaded, setProfileLoaded] = useState(false);
   const [products, setProducts] = useState([]);
   const [stores, setStores] = useState([]);
+  const [storesLoading, setStoresLoading] = useState(false);
+  const [storesError, setStoresError] = useState(null);
   const [inventory, setInventory] = useState({});
   const [transactions, setTransactions] = useState([]);
   const [liveFeed, setLiveFeed] = useState([]);
@@ -23,6 +25,8 @@ export const DashboardProvider = ({ children, session }) => {
     totalProductsSold: 0,
   });
   const processedTransactionIds = useRef(new Set());
+
+  const ownerId = session?.user?.id;
 
   // Fetch Profile
   useEffect(() => {
@@ -43,6 +47,27 @@ export const DashboardProvider = ({ children, session }) => {
 
     loadProfile();
   }, [session]);
+
+  // Fetch Stores from API when profile is loaded
+  useEffect(() => {
+    if (!profile || !ownerId) return;
+
+    const loadStores = async () => {
+      setStoresLoading(true);
+      setStoresError(null);
+      try {
+        const storesData = await fetchStores(ownerId);
+        setStores(storesData);
+      } catch (err) {
+        console.warn('Failed to fetch stores', err);
+        setStoresError(err.message);
+      } finally {
+        setStoresLoading(false);
+      }
+    };
+
+    loadStores();
+  }, [profile, ownerId]);
 
   const processNewTransaction = useCallback((tx) => {
     if (!tx?.id || processedTransactionIds.current.has(tx.id)) return;
@@ -111,27 +136,48 @@ export const DashboardProvider = ({ children, session }) => {
     });
   }, [processNewTransaction, profile]);
 
-  const addStore = useCallback((storeData) => {
-    setStores((prev) => [...prev, {
-      id: `s${Date.now()}`,
-      status: 'Active',
-      ...storeData,
-    }]);
-  }, []);
+  // ─── Store CRUD (persisted to database) ────────────────────────────────
 
-  const updateStore = useCallback((id, updates) => {
-    setStores((prev) => prev.map((s) => s.id === id ? { ...s, ...updates } : s));
-  }, []);
+  const addStore = useCallback(async (storeData) => {
+    if (!ownerId) return;
+    try {
+      const saved = await createStoreApi(storeData, ownerId);
+      setStores((prev) => [saved, ...prev]);
+      return saved;
+    } catch (err) {
+      console.error('Failed to create store', err);
+      throw err;
+    }
+  }, [ownerId]);
 
-  const removeStore = useCallback((id) => {
-    setStores((prev) => prev.filter((s) => s.id !== id));
-  }, []);
+  const updateStore = useCallback(async (id, updates) => {
+    if (!ownerId) return;
+    try {
+      const saved = await updateStoreApi(id, updates, ownerId);
+      setStores((prev) => prev.map((s) => s.id === id ? saved : s));
+      return saved;
+    } catch (err) {
+      console.error('Failed to update store', err);
+      throw err;
+    }
+  }, [ownerId]);
+
+  const removeStore = useCallback(async (id) => {
+    if (!ownerId) return;
+    try {
+      await deleteStoreApi(id, ownerId);
+      setStores((prev) => prev.filter((s) => s.id !== id));
+    } catch (err) {
+      console.error('Failed to delete store', err);
+      throw err;
+    }
+  }, [ownerId]);
 
   return (
     <DashboardContext.Provider value={{
       profile, setProfile, profileLoaded, session,
       products, setProducts,
-      stores, setStores,
+      stores, setStores, storesLoading, storesError,
       inventory, setInventory,
       transactions, setTransactions,
       liveFeed,
