@@ -4,7 +4,8 @@ import { useDashboard } from '../context/DashboardContext';
 import { 
   MapPin, Plus, Edit3, ToggleRight, 
   Download, ExternalLink, Globe, X, 
-  Trash2, BarChart3, ChevronRight 
+  Trash2, BarChart3, ChevronRight,
+  Package, Database
 } from 'lucide-react';
 
 const StoreCard = ({ store, onToggle, onEdit, onDelete }) => {
@@ -121,12 +122,32 @@ const StoreCard = ({ store, onToggle, onEdit, onDelete }) => {
 
       {/* Footer secondary actions */}
       <div style={{ padding: '1.25rem', background: 'white', borderTop: '1px solid #F1F5F9' }}>
+        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.5rem', marginBottom: '0.75rem' }}>
+          <button 
+            style={secondaryBtnStyle} 
+            onClick={(e) => { e.stopPropagation(); navigate(`/stores/${store.id}/products`); }}
+            onMouseOver={e => e.currentTarget.style.background = '#F1F5F9'} 
+            onMouseOut={e => e.currentTarget.style.background = '#F8FAFC'}
+          >
+            <Package size={14} />
+            Manage Catalog
+          </button>
+          <button 
+            style={secondaryBtnStyle} 
+            onClick={(e) => { e.stopPropagation(); navigate(`/stores/${store.id}/inventory`); }}
+            onMouseOver={e => e.currentTarget.style.background = '#F1F5F9'} 
+            onMouseOut={e => e.currentTarget.style.background = '#F8FAFC'}
+          >
+            <Database size={14} />
+            Inventory
+          </button>
+        </div>
         <div style={{ display: 'flex', gap: '0.5rem', marginBottom: '1.25rem' }}>
           <button style={secondaryBtnStyle} onClick={(e) => { e.stopPropagation(); window.print(); }} onMouseOver={e => e.currentTarget.style.background = '#F1F5F9'} onMouseOut={e => e.currentTarget.style.background = '#F8FAFC'}>
             <Download size={14} />
             Print Kit
           </button>
-          <button style={secondaryBtnStyle} onClick={(e) => { e.stopPropagation(); window.open(`http://localhost:5174/node/${store.qrCode}`, '_blank'); }} onMouseOver={e => e.currentTarget.style.background = '#F1F5F9'} onMouseOut={e => e.currentTarget.style.background = '#F8FAFC'}>
+          <button style={secondaryBtnStyle} onClick={(e) => { e.stopPropagation(); window.open(`http://localhost:5173/?store_id=${store.id}`, '_blank'); }} onMouseOver={e => e.currentTarget.style.background = '#F1F5F9'} onMouseOut={e => e.currentTarget.style.background = '#F8FAFC'}>
             <ExternalLink size={14} />
             Kiosk preview
           </button>

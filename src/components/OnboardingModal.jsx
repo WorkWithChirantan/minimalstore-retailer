@@ -27,7 +27,7 @@ const OnboardingModal = ({ session, onComplete }) => {
         ]);
 
       if (profileError) throw profileError;
-      
+
       onComplete(); // Close modal and show dashboard
     } catch (err) {
       setError(err.message);

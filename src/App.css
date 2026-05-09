@@ -169,37 +169,36 @@
 .activity-text { font-size: 0.875rem; font-weight: 600; }
 .activity-meta { font-size: 0.75rem; color: var(--text-muted); }
 
-/* Buttons & Inputs */
-.btn-primary {
-  background: var(--primary);
-  color: white;
-  padding: 0.625rem 1.25rem;
-  border-radius: var(--radius-md);
-  font-weight: 600;
-  font-size: 0.875rem;
-  transition: var(--transition);
+/* Responsive Enhancements */
+@media (max-width: 1024px) {
+  .charts-grid {
+    grid-template-columns: 1fr;
+  }
 }
 
-.btn-primary:hover { background: var(--primary-hover); }
-
-/* Branding Preview Mobile Frame */
-.mobile-preview-container {
-  background: #E2E8F0;
-  padding: 2rem;
-  border-radius: 2rem;
-  width: 320px;
-  height: 600px;
-  margin: 0 auto;
-  border: 8px solid #1E293B;
-  overflow: hidden;
-  position: relative;
-  box-shadow: var(--shadow-md);
-}
-
-.mobile-preview-screen {
-  background: white;
-  height: 100%;
-  width: 100%;
-  display: flex;
-  flex-direction: column;
+@media (max-width: 768px) {
+  .sidebar {
+    transform: translateX(-100%);
+    transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  }
+  
+  .sidebar.open {
+    transform: translateX(0);
+  }
+  
+  .main-content {
+    margin-left: 0;
+  }
+  
+  .stats-grid {
+    grid-template-columns: 1fr;
+  }
+  
+  .top-nav {
+    padding: 0 1rem;
+  }
+  
+  .workspace {
+    padding: 1rem;
+  }
 }

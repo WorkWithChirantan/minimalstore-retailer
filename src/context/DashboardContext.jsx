@@ -27,20 +27,20 @@ export const DashboardProvider = ({ children, session }) => {
   // Fetch Profile
   useEffect(() => {
     if (!session?.user?.id) return;
-    
+
     const loadProfile = async () => {
       const { data, error } = await supabase
         .from('profiles')
         .select('*')
         .eq('id', session.user.id)
         .single();
-        
+
       if (!error && data) {
         setProfile(data);
       }
       setProfileLoaded(true);
     };
-    
+
     loadProfile();
   }, [session]);
 

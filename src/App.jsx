@@ -20,55 +20,69 @@ import StoreAnalytics from './pages/StoreAnalytics';
 import Login from './pages/Login';
 import OnboardingModal from './components/OnboardingModal';
 
+const StoreDetailRoutes = () => {
+  return (
+    <Routes>
+      <Route path="/" element={<StoreAnalytics />} />
+      <Route path="/products" element={<ProductManagement />} />
+      <Route path="/inventory" element={<InventoryManagement />} />
+    </Routes>
+  );
+};
+
 import './App.css';
 
-const PageWrapper = ({ session }) => {
+const PageWrapper = ({ session, loginTime }) => {
   const location = useLocation();
   const { profile, profileLoaded } = useDashboard();
-  
+  const [sidebarOpen, setSidebarOpen] = useState(false);
+
   // Map path to title
   const getPageTitle = (path) => {
-    switch(path) {
-      case '/': return 'Overview';
-      case '/stores': return 'Stores';
-      case '/products': return 'Products';
-      case '/inventory': return 'Inventory';
-      case '/transactions': return 'Transactions';
-      case '/analytics': return 'Analytics';
-      case '/promotions': return 'Promotions';
-      case '/branding': return 'Branding';
-      case '/staff': return 'Staff Access';
-      case '/settings': return 'Settings';
-      case '/billing': return 'Billing';
-      default: 
-        if (path.startsWith('/stores/')) return 'Node Analytics';
-        return 'theminimalStore';
+    if (path === '/') return 'Overview';
+    if (path === '/stores') return 'Stores';
+    if (path === '/transactions') return 'Transactions';
+    if (path === '/analytics') return 'Analytics';
+    if (path === '/promotions') return 'Promotions';
+    if (path === '/branding') return 'Branding';
+    if (path === '/staff') return 'Staff Access';
+    if (path === '/settings') return 'Settings';
+    if (path === '/billing') return 'Billing';
+
+    if (path.includes('/stores/')) {
+      if (path.endsWith('/products')) return 'Store Products';
+      if (path.endsWith('/inventory')) return 'Store Inventory';
+      return 'Node Analytics';
     }
+
+    return 'theminimalStore';
   };
 
   return (
     <>
       {profileLoaded && !profile && (
-        <OnboardingModal 
-          session={session} 
+        <OnboardingModal
+          session={session}
           onComplete={() => {
             // Re-fetch or hard reload to pick up the new profile
             window.location.reload();
-          }} 
+          }}
         />
       )}
       <div className="layout-container">
-        <Sidebar />
+        <Sidebar isOpen={sidebarOpen} onToggle={() => setSidebarOpen(!sidebarOpen)} />
         <main className="main-content">
-          <TopNav title={getPageTitle(location.pathname)} />
+          <TopNav
+            title={getPageTitle(location.pathname)}
+            onToggleSidebar={() => setSidebarOpen(!sidebarOpen)}
+            loginTime={loginTime}
+          />
           <div className="workspace">
             {profile ? (
               <Routes>
                 <Route path="/" element={<Overview />} />
                 <Route path="/stores" element={<StoreManagement />} />
-                <Route path="/stores/:storeId" element={<StoreAnalytics />} />
-                <Route path="/products" element={<ProductManagement />} />
-                <Route path="/inventory" element={<InventoryManagement />} />
+                <Route path="/stores/:storeId/*" element={<StoreDetailRoutes />} />
                 <Route path="/transactions" element={<Transactions />} />
                 <Route path="/analytics" element={<Analytics />} />
                 <Route path="/promotions" element={<Promotions />} />
@@ -79,7 +93,7 @@ const PageWrapper = ({ session }) => {
               </Routes>
             ) : (
               <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: '100%' }}>
-                 <p style={{ color: '#64748B', fontWeight: 600 }}>Loading Dashboard...</p>
+                <p style={{ color: '#64748B', fontWeight: 600 }}>Loading Dashboard...</p>
               </div>
             )}
           </div>
@@ -91,29 +105,71 @@ const PageWrapper = ({ session }) => {
 
 function App() {
   const [session, setSession] = useState(null);
+  const [initializing, setInitializing] = useState(true);
+  const [loginTime, setLoginTime] = useState(null);
 
   useEffect(() => {
+    // Check for login time in local storage to persist timer across refreshes
+    const storedLoginTime = localStorage.getItem('scaas_login_time');
+    if (storedLoginTime) {
+      setLoginTime(parseInt(storedLoginTime));
+    }
+
     supabase.auth.getSession().then(({ data: { session } }) => {
       setSession(session);
+      if (session && !storedLoginTime) {
+        const now = Date.now();
+        setLoginTime(now);
+        localStorage.setItem('scaas_login_time', now.toString());
+      }
+      setInitializing(false);
     });
 
     const {
       data: { subscription },
     } = supabase.auth.onAuthStateChange((_event, session) => {
       setSession(session);
+      if (session) {
+        if (!localStorage.getItem('scaas_login_time')) {
+          const now = Date.now();
+          setLoginTime(now);
+          localStorage.setItem('scaas_login_time', now.toString());
+        }
+      } else {
+        localStorage.removeItem('scaas_login_time');
+        setLoginTime(null);
+      }
+      setInitializing(false);
     });
 
     return () => subscription.unsubscribe();
   }, []);
 
+  if (initializing) {
+    return (
+      <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: '100vh', background: '#FAF9F6' }}>
+        <div style={{ textAlign: 'center' }}>
+          <div style={{ width: '40px', height: '40px', border: '3px solid #E2E8F0', borderTop: '3px solid #111111', borderRadius: '50%', animation: 'spin 1s linear infinite', margin: '0 auto 1rem' }}></div>
+          <p style={{ color: '#64748B', fontWeight: 600, fontSize: '0.875rem' }}>Verifying Session...</p>
+        </div>
+        <style>{`@keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }`}</style>
+      </div>
+    );
+  }
+
   if (!session) {
-    return <Login onLogin={setSession} />;
+    return <Login onLogin={(s) => {
+      setSession(s);
+      const now = Date.now();
+      setLoginTime(now);
+      localStorage.setItem('scaas_login_time', now.toString());
+    }} />;
   }
 
   return (
     <DashboardProvider session={session}>
       <Router>
-        <PageWrapper session={session} />
+        <PageWrapper session={session} loginTime={loginTime} />
       </Router>
     </DashboardProvider>
   );

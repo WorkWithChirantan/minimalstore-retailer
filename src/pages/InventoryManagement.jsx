@@ -1,13 +1,34 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
+import { useParams, useNavigate } from 'react-router-dom';
 import { useDashboard } from '../context/DashboardContext';
+import { fetchProducts, getStoreId } from '../services/checkoutSync';
 import { 
   Package, AlertTriangle, CheckCircle2, Truck, 
   ArrowRight, Phone, Mail, Settings2, Bell, 
-  RefreshCw, History, ChevronRight
+  RefreshCw, History, ChevronRight, ArrowLeft
 } from 'lucide-react';
 
 const InventoryManagement = () => {
-  const { products, inventory, setInventory } = useDashboard();
+  const { storeId } = useParams();
+  const navigate = useNavigate();
+  const { products, inventory, setInventory, setProducts } = useDashboard();
+
+  // Fetch store-specific inventory if storeId changes
+  useEffect(() => {
+    if (!storeId) return;
+    
+    const originalStoreId = getStoreId();
+    localStorage.setItem('scaas_retailer_store_id', storeId);
+    
+    fetchProducts().then(data => {
+      setProducts(data);
+      setInventory(data.reduce((acc, p) => ({ ...acc, [p.id]: p.quantity }), {}));
+    }).catch(err => console.warn('Failed to fetch inventory for store', storeId, err));
+
+    return () => {
+      if (originalStoreId) localStorage.setItem('scaas_retailer_store_id', originalStoreId);
+    };
+  }, [storeId, setProducts, setInventory]);
   const [restockThreshold, setRestockThreshold] = useState(15);
   const [autoRestockEnabled, setAutoRestockEnabled] = useState(false);
   const [restockHistory, setRestockHistory] = useState([
@@ -99,8 +120,27 @@ const InventoryManagement = () => {
       {/* Premium Header */}
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-end', marginBottom: '2.5rem' }}>
         <div>
+          <button 
+            onClick={() => navigate('/stores')}
+            style={{ 
+              display: 'flex', 
+              alignItems: 'center', 
+              gap: '0.5rem', 
+              color: '#64748B', 
+              fontSize: '0.75rem', 
+              fontWeight: 800, 
+              border: 'none', 
+              background: 'transparent', 
+              cursor: 'pointer',
+              marginBottom: '1rem',
+              padding: 0
+            }}
+          >
+            <ArrowLeft size={14} />
+            BACK TO STORES
+          </button>
           <h1 style={{ fontSize: '2.5rem', fontWeight: 900, letterSpacing: '-0.04em', color: '#111111' }}>Supply Intelligence</h1>
-          <p style={{ color: '#64748B', fontSize: '1rem', marginTop: '0.5rem', fontWeight: 500 }}>Real-time inventory optimization and automated vendor fulfillment.</p>
+          <p style={{ color: '#64748B', fontSize: '1rem', marginTop: '0.5rem', fontWeight: 500 }}>Managing stock for Node: <span style={{ color: '#111111', fontWeight: 700 }}>{storeId}</span></p>
         </div>
         
         {/* Unified Control Bar */}

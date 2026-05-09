@@ -1,14 +1,16 @@
-import { Bell, Search, User, Settings, HelpCircle, ChevronDown, LogOut } from 'lucide-react';
+import { Bell, Search, User, Settings, HelpCircle, ChevronDown, LogOut, Menu } from 'lucide-react';
 import { useState, useRef, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useDashboard } from '../context/DashboardContext';
 import { supabase } from '../lib/supabase';
+import styles from './TopNav.module.css';
 
-const TopNav = ({ title }) => {
+const TopNav = ({ title, onToggleSidebar, loginTime }) => {
   const navigate = useNavigate();
   const { profile } = useDashboard();
   const [showNotifications, setShowNotifications] = useState(false);
   const [showProfile, setShowProfile] = useState(false);
+  const [elapsedTime, setElapsedTime] = useState('00:00:00');
   const navRef = useRef(null);
 
   useEffect(() => {
@@ -21,58 +23,75 @@ const TopNav = ({ title }) => {
     document.addEventListener('mousedown', handleClickOutside);
     return () => document.removeEventListener('mousedown', handleClickOutside);
   }, []);
-  return (
-    <header ref={navRef} className="top-nav" style={{ 
-      display: 'flex',
-      alignItems: 'center',
-      justifyContent: 'space-between',
-      borderBottom: '1px solid var(--border)', 
-      background: 'white',
-      height: '80px',
-      padding: '0 3rem',
-      position: 'sticky',
-      top: 0,
-      zIndex: 100
-    }}>
-      <div style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
-        <h2 style={{ fontSize: '1.25rem', fontWeight: 800, letterSpacing: '-0.02em', color: 'var(--text-main)' }}>
-          {title}
-        </h2>
-      </div>
 
-      <div style={{ display: 'flex', alignItems: 'center', gap: '2rem' }}>
-        {/* Modern Search Bar */}
-        <div style={{ position: 'relative', width: '320px' }} className="hidden md:block">
-          <Search size={16} style={{ position: 'absolute', left: '1rem', top: '50%', transform: 'translateY(-50%)', color: 'var(--text-muted)' }} />
+  useEffect(() => {
+    if (!loginTime) return;
+
+    const updateTimer = () => {
+      const now = Date.now();
+      const diff = Math.floor((now - loginTime) / 1000);
+      
+      const hours = Math.floor(diff / 3600);
+      const minutes = Math.floor((diff % 3600) / 60);
+      const seconds = diff % 60;
+
+      const format = (n) => n.toString().padStart(2, '0');
+      setElapsedTime(`${format(hours)}:${format(minutes)}:${format(seconds)}`);
+    };
+
+    updateTimer();
+    const intervalId = setInterval(updateTimer, 1000);
+    return () => clearInterval(intervalId);
+  }, [loginTime]);
+
+  return (
+    <header ref={navRef} className={styles.header}>
+      <div className={styles.titleGroup}>
+        <button 
+          className={styles.menuButton} 
+          onClick={onToggleSidebar}
+          aria-label="Toggle Menu"
+        >
+          <Menu size={20} />
+        </button>
+        <div style={{ display: 'flex', flexDirection: 'column' }}>
+          <h2 className={styles.title}>{title}</h2>
+          {loginTime && (
+            <span style={{ fontSize: '0.65rem', fontWeight: 700, color: '#10B981', display: 'flex', alignItems: 'center', gap: '4px' }}>
+              <div style={{ width: '6px', height: '6px', background: '#10B981', borderRadius: '50%', animation: 'pulse 2s infinite' }}></div>
+              Session: {elapsedTime}
+            </span>
+          )}
+        </div>
+      </div>
+      <style>{`@keyframes pulse { 0% { opacity: 1; } 50% { opacity: 0.4; } 100% { opacity: 1; } }`}</style>
+
+      <div className={styles.actionsGroup}>
+        <div className={styles.searchWrapper}>
+          <Search size={16} className={styles.searchIcon} />
           <input
             type="text"
             placeholder="Search commands or data..."
-            style={{ 
-              width: '100%', 
-              padding: '0.75rem 1rem 0.75rem 2.75rem', 
-              background: '#f8fafc', 
-              border: '1px solid #e2e8f0', 
-              borderRadius: '14px', 
-              fontSize: '0.8125rem',
-              fontWeight: 500,
-              outline: 'none',
-              transition: 'all 0.2s ease'
-            }}
+            className={styles.searchInput}
           />
-          <div style={{ position: 'absolute', right: '1rem', top: '50%', transform: 'translateY(-50%)', opacity: 0.4, pointerEvents: 'none' }}>
-            <span style={{ fontSize: '10px', fontWeight: 900, border: '1px solid #94a3b8', padding: '1px 4px', borderRadius: '4px' }}>⌘K</span>
+          <div className={styles.searchShortcut}>
+            <span className={styles.shortcutText}>⌘K</span>
           </div>
         </div>
 
-        <div style={{ display: 'flex', alignItems: 'center', gap: '1.5rem' }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+        <div className={styles.controls}>
+          <div className={styles.iconButtons}>
             <div style={{ position: 'relative' }}>
-              <button onClick={() => { setShowNotifications(!showNotifications); setShowProfile(false); }} style={{ padding: '0.625rem', color: 'var(--text-muted)', background: 'transparent', border: 'none', cursor: 'pointer', position: 'relative' }}>
+              <button 
+                onClick={() => { setShowNotifications(!showNotifications); setShowProfile(false); }} 
+                className={styles.iconButton}
+              >
                 <Bell size={20} />
-                <span style={{ position: 'absolute', top: '0.625rem', right: '0.625rem', width: '8px', height: '8px', background: 'var(--error)', borderRadius: '50%', border: '2px solid white' }}></span>
+                <span className={styles.notificationDot}></span>
               </button>
+              
               {showNotifications && (
-                <div style={{ position: 'absolute', top: '100%', right: 0, marginTop: '0.5rem', width: '320px', background: 'white', borderRadius: '16px', border: '1px solid #e2e8f0', boxShadow: '0 10px 25px -5px rgba(0,0,0,0.1)', padding: '1.25rem', zIndex: 110 }}>
+                <div className={styles.notificationDropdown}>
                   <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1rem' }}>
                     <h4 style={{ fontSize: '0.875rem', fontWeight: 800, color: '#111111' }}>Notifications</h4>
                     <span style={{ fontSize: '0.75rem', color: '#10B981', fontWeight: 700, cursor: 'pointer' }}>Mark all as read</span>
@@ -90,64 +109,47 @@ const TopNav = ({ title }) => {
                 </div>
               )}
             </div>
-            <button onClick={() => alert('Help Center opened')} style={{ padding: '0.625rem', color: 'var(--text-muted)', background: 'transparent', border: 'none', cursor: 'pointer' }}>
+            <button 
+              onClick={() => alert('Help Center opened')} 
+              className={styles.iconButton}
+            >
               <HelpCircle size={20} />
             </button>
           </div>
           
-          <div style={{ width: '1px', height: '24px', background: '#e2e8f0' }}></div>
+          <div className={styles.divider}></div>
           
-          {/* User Profile Pill */}
           <div style={{ position: 'relative' }}>
-            <button onClick={() => { setShowProfile(!showProfile); setShowNotifications(false); }} style={{ 
-              display: 'flex', 
-              alignItems: 'center', 
-              gap: '0.75rem', 
-              padding: '0.375rem', 
-              paddingRight: '1rem',
-              background: 'white', 
-              border: '1px solid #e2e8f0', 
-              borderRadius: '16px',
-              cursor: 'pointer',
-              transition: 'all 0.2s ease'
-            }} className="profile-btn-hover">
-              <div style={{ 
-                width: '40px', 
-                height: '40px', 
-                borderRadius: '12px', 
-                background: '#111111', 
-                color: 'white', 
-                display: 'flex', 
-                alignItems: 'center', 
-                justifyContent: 'center', 
-                fontWeight: 700, 
-                fontSize: '0.875rem' 
-              }}>
+            <button 
+              onClick={() => { setShowProfile(!showProfile); setShowNotifications(false); }} 
+              className={styles.profilePill}
+            >
+              <div className={styles.avatar}>
                 {profile?.full_name ? profile.full_name.split(' ').map(n => n[0]).join('').substring(0, 2).toUpperCase() : '??'}
               </div>
-              <div style={{ textAlign: 'left' }} className="hidden lg:block">
-                <div style={{ display: 'flex', alignItems: 'center', gap: '0.25rem' }}>
-                  <span style={{ fontSize: '0.875rem', fontWeight: 800, color: 'var(--text-main)' }}>{profile?.full_name || 'Loading...'}</span>
+              <div className={styles.profileInfo}>
+                <div className={styles.profileNameGroup}>
+                  <span className={styles.profileName}>{profile?.full_name || 'Loading...'}</span>
                   <ChevronDown size={12} style={{ color: 'var(--text-muted)', opacity: 0.5, transform: showProfile ? 'rotate(180deg)' : 'rotate(0deg)', transition: 'transform 0.2s ease' }} />
                 </div>
-                <div style={{ fontSize: '0.65rem', fontWeight: 800, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
+                <div className={styles.profileCompany}>
                   {profile?.company_name || 'Store Owner'}
                 </div>
               </div>
             </button>
             
             {showProfile && (
-              <div style={{ position: 'absolute', top: '100%', right: 0, marginTop: '0.5rem', width: '240px', background: 'white', borderRadius: '16px', border: '1px solid #e2e8f0', boxShadow: '0 10px 25px -5px rgba(0,0,0,0.1)', padding: '0.5rem', zIndex: 110 }}>
-                <button onClick={() => { navigate('/settings'); setShowProfile(false); }} style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', width: '100%', padding: '0.75rem 1rem', background: 'transparent', border: 'none', borderRadius: '12px', cursor: 'pointer', textAlign: 'left' }} onMouseOver={e => e.currentTarget.style.background = '#F8FAFC'} onMouseOut={e => e.currentTarget.style.background = 'transparent'}>
+              <div className={styles.dropdown}>
+                <button onClick={() => { navigate('/settings'); setShowProfile(false); }} className={styles.dropdownItem}>
                   <Settings size={16} style={{ color: '#64748B' }} />
                   <span style={{ fontSize: '0.8125rem', fontWeight: 600, color: '#111111' }}>Account Settings</span>
                 </button>
-                <button onClick={() => { navigate('/staff'); setShowProfile(false); }} style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', width: '100%', padding: '0.75rem 1rem', background: 'transparent', border: 'none', borderRadius: '12px', cursor: 'pointer', textAlign: 'left' }} onMouseOver={e => e.currentTarget.style.background = '#F8FAFC'} onMouseOut={e => e.currentTarget.style.background = 'transparent'}>
+                <button onClick={() => { navigate('/staff'); setShowProfile(false); }} className={styles.dropdownItem}>
                   <User size={16} style={{ color: '#64748B' }} />
                   <span style={{ fontSize: '0.8125rem', fontWeight: 600, color: '#111111' }}>Staff Access</span>
                 </button>
                 <div style={{ height: '1px', background: '#E2E8F0', margin: '0.25rem 0' }}></div>
-                <button onClick={async () => { await supabase.auth.signOut(); setShowProfile(false); }} style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', width: '100%', padding: '0.75rem 1rem', background: 'transparent', border: 'none', borderRadius: '12px', cursor: 'pointer', textAlign: 'left', color: '#EF4444' }} onMouseOver={e => e.currentTarget.style.background = '#FEF2F2'} onMouseOut={e => e.currentTarget.style.background = 'transparent'}>
+                <button onClick={async () => { await supabase.auth.signOut(); setShowProfile(false); }} className={styles.logoutItem}>
                   <LogOut size={16} />
                   <span style={{ fontSize: '0.8125rem', fontWeight: 600 }}>Log Out</span>
                 </button>

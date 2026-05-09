@@ -1,14 +1,17 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
+import { useParams, useNavigate } from 'react-router-dom';
 import { useDashboard } from '../context/DashboardContext';
-import { createGlobalProduct, upsertInventory } from '../services/checkoutSync';
+import { createGlobalProduct, upsertInventory, fetchProducts, getStoreId } from '../services/checkoutSync';
 import {
   Search, Plus, Filter, Upload, Download,
   MoreVertical, Edit2, Trash2, ArrowUpRight,
-  PackageCheck, PackageX
+  PackageCheck, PackageX, ArrowLeft
 } from 'lucide-react';
 
 const ProductManagement = () => {
-  const { products, inventory } = useDashboard();
+  const { storeId } = useParams();
+  const navigate = useNavigate();
+  const { products, inventory, setProducts, setInventory } = useDashboard();
   const [searchTerm, setSearchTerm] = useState('');
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [formData, setFormData] = useState({
@@ -24,8 +27,28 @@ const ProductManagement = () => {
     stock_quantity: '',
     min_stock_level: 5,
   });
-  const [saving, setSaving] = useState(false);
   const [message, setMessage] = useState('');
+  const [saving, setSaving] = useState(false);
+
+  // Fetch store-specific products if storeId changes
+  useEffect(() => {
+    if (!storeId) return;
+    
+    // Temporarily override localStorage for this session/view
+    // This ensures checkoutSync uses the correct ID
+    const originalStoreId = getStoreId();
+    localStorage.setItem('scaas_retailer_store_id', storeId);
+    
+    fetchProducts().then(data => {
+      setProducts(data);
+      setInventory(data.reduce((acc, p) => ({ ...acc, [p.id]: p.quantity }), {}));
+    }).catch(err => console.warn('Failed to fetch products for store', storeId, err));
+
+    return () => {
+      // Restore original store ID on unmount
+      if (originalStoreId) localStorage.setItem('scaas_retailer_store_id', originalStoreId);
+    };
+  }, [storeId, setProducts, setInventory]);
 
   const filteredProducts = products.filter(p =>
     p.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
@@ -124,8 +147,27 @@ const ProductManagement = () => {
       {/* Premium Header */}
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-end', marginBottom: '2.5rem' }}>
         <div>
-          <h1 style={{ fontSize: '2.5rem', fontWeight: 900, letterSpacing: '-0.04em', color: '#111111' }}>Product Catalog</h1>
-          <p style={{ color: '#64748B', fontSize: '1rem', marginTop: '0.5rem', fontWeight: 500 }}>Manage your product inventory, pricing, and assets.</p>
+          <button 
+            onClick={() => navigate('/stores')}
+            style={{ 
+              display: 'flex', 
+              alignItems: 'center', 
+              gap: '0.5rem', 
+              color: '#64748B', 
+              fontSize: '0.75rem', 
+              fontWeight: 800, 
+              border: 'none', 
+              background: 'transparent', 
+              cursor: 'pointer',
+              marginBottom: '1rem',
+              padding: 0
+            }}
+          >
+            <ArrowLeft size={14} />
+            BACK TO STORES
+          </button>
+          <h1 style={{ fontSize: '2.5rem', fontWeight: 900, letterSpacing: '-0.04em', color: '#111111' }}>Store Catalog</h1>
+          <p style={{ color: '#64748B', fontSize: '1rem', marginTop: '0.5rem', fontWeight: 500 }}>Managing items for Node: <span style={{ color: '#111111', fontWeight: 700 }}>{storeId}</span></p>
         </div>
         <div style={{ display: 'flex', gap: '0.75rem' }}>
           <button style={actionBtnStyle} onMouseOver={e => e.currentTarget.style.background = '#F8FAFC'} onMouseOut={e => e.currentTarget.style.background = 'white'}>
@@ -267,45 +309,104 @@ const ProductManagement = () => {
           zIndex: 1000,
           padding: '1rem'
         }}>
-          <form onSubmit={handleSaveProduct} style={{ width: '100%', maxWidth: '640px', background: 'white', borderRadius: '24px', padding: '2rem', border: '1px solid #E2E8F0', boxShadow: '0 24px 60px rgba(15,23,42,0.18)' }}>
-            <div style={{ display: 'flex', justifyContent: 'space-between', gap: '1rem', marginBottom: '1.5rem' }}>
+          <form 
+            onSubmit={handleSaveProduct} 
+            style={{ 
+              width: '100%', 
+              maxWidth: '680px', 
+              maxHeight: 'calc(100vh - 2rem)',
+              overflowY: 'auto',
+              background: 'white', 
+              borderRadius: '20px', 
+              padding: '1.25rem', 
+              border: '1px solid #E2E8F0', 
+              boxShadow: '0 20px 50px rgba(15,23,42,0.15)',
+              position: 'relative'
+            }}
+          >
+            <div style={{ 
+              display: 'flex', 
+              justifyContent: 'space-between', 
+              gap: '1rem', 
+              marginBottom: '1rem',
+              position: 'sticky',
+              top: 0,
+              background: 'white',
+              zIndex: 10,
+              paddingBottom: '0.75rem',
+              borderBottom: '1px solid #F1F5F9',
+              marginTop: '-0.25rem'
+            }}>
               <div>
-                <h2 style={{ fontSize: '1.25rem', fontWeight: 900, color: '#111111' }}>Add Product</h2>
-                <p style={{ color: '#64748B', fontSize: '0.875rem', marginTop: '0.25rem', fontWeight: 600 }}>Catalog fields are global. Price and stock are store-specific.</p>
+                <h2 style={{ fontSize: '1.1rem', fontWeight: 900, color: '#111111' }}>Add New Product</h2>
+                <p style={{ color: '#64748B', fontSize: '0.75rem', marginTop: '0.125rem', fontWeight: 600 }}>Catalog fields are global. Price and stock are store-specific.</p>
               </div>
-              <button type="button" onClick={() => setIsModalOpen(false)} style={{ border: 'none', background: '#F8FAFC', borderRadius: '12px', width: '40px', height: '40px', cursor: 'pointer', fontWeight: 900 }}>X</button>
+              <button type="button" onClick={() => setIsModalOpen(false)} style={{ border: 'none', background: '#F8FAFC', borderRadius: '10px', width: '32px', height: '32px', cursor: 'pointer', fontWeight: 900, display: 'flex', alignItems: 'center', justifyCenter: 'center' }}>X</button>
             </div>
 
-            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem' }}>
+            <div style={{ 
+              display: 'grid', 
+              gridTemplateColumns: window.innerWidth < 640 ? '1fr' : '1fr 1fr 1fr', 
+              gap: '0.625rem' 
+            }}>
               {[
-                ['barcode', 'Barcode'],
-                ['product_name', 'Product Name'],
-                ['brand', 'Brand'],
-                ['category', 'Category'],
-                ['unit', 'Unit'],
-                ['quantity_per_unit', 'Quantity Per Unit'],
-                ['price', 'Selling Price'],
-                ['mrp', 'MRP'],
-                ['cost_price', 'Cost Price'],
-                ['stock_quantity', 'Stock Quantity'],
-                ['min_stock_level', 'Minimum Stock'],
-              ].map(([key, label]) => (
-                <label key={key} style={{ display: 'flex', flexDirection: 'column', gap: '0.4rem', fontSize: '0.7rem', fontWeight: 900, color: '#64748B', textTransform: 'uppercase', letterSpacing: '0.08em' }}>
+                ['barcode', 'Barcode', 'EAN/UPC'],
+                ['product_name', 'Product Name', 'Item name'],
+                ['brand', 'Brand', 'Company'],
+                ['category', 'Category', 'Section'],
+                ['unit', 'Unit', 'pcs/ltr/kg'],
+                ['quantity_per_unit', 'Qty/Unit', 'Pack size'],
+                ['price', 'Sell Price', '₹0.00'],
+                ['mrp', 'MRP', '₹0.00'],
+                ['cost_price', 'Cost Price', '₹0.00'],
+                ['stock_quantity', 'Stock', 'Count'],
+                ['min_stock_level', 'Min Stock', 'Alert at'],
+              ].map(([key, label, placeholder]) => (
+                <label key={key} style={{ display: 'flex', flexDirection: 'column', gap: '0.15rem', fontSize: '0.6rem', fontWeight: 900, color: '#64748B', textTransform: 'uppercase', letterSpacing: '0.04em' }}>
                   {label}
-                  <input
-                    required={['barcode', 'product_name', 'price'].includes(key)}
-                    type={['price', 'mrp', 'cost_price', 'stock_quantity', 'min_stock_level', 'quantity_per_unit'].includes(key) ? 'number' : 'text'}
-                    value={formData[key]}
-                    onChange={(event) => setFormData({ ...formData, [key]: event.target.value })}
-                    style={{ padding: '0.8rem 0.9rem', borderRadius: '12px', border: '1px solid #E2E8F0', fontSize: '0.875rem', color: '#111111', fontWeight: 700, textTransform: 'none', letterSpacing: 0 }}
-                  />
+                  {key === 'unit' ? (
+                    <select
+                      value={formData[key]}
+                      onChange={(event) => setFormData({ ...formData, [key]: event.target.value })}
+                      style={{ padding: '0.5rem 0.6rem', borderRadius: '8px', border: '1px solid #E2E8F0', fontSize: '0.75rem', color: '#111111', fontWeight: 700, background: 'white', width: '100%', cursor: 'pointer' }}
+                    >
+                      {['pcs', 'ltr', 'kgs', 'gms', 'ml', 'unit', 'box', 'pk'].map(u => (
+                        <option key={u} value={u}>{u}</option>
+                      ))}
+                    </select>
+                  ) : (
+                    <input
+                      required={['barcode', 'product_name', 'price'].includes(key)}
+                      type={['price', 'mrp', 'cost_price', 'stock_quantity', 'min_stock_level', 'quantity_per_unit'].includes(key) ? 'number' : 'text'}
+                      inputMode={key === 'barcode' ? 'numeric' : undefined}
+                      placeholder={placeholder}
+                      value={formData[key]}
+                      onChange={(event) => {
+                        let value = event.target.value;
+                        if (key === 'barcode') value = value.replace(/\D/g, ''); // Only digits for barcode
+                        setFormData({ ...formData, [key]: value });
+                      }}
+                      style={{ padding: '0.5rem 0.6rem', borderRadius: '8px', border: '1px solid #E2E8F0', fontSize: '0.75rem', color: '#111111', fontWeight: 700, textTransform: 'none', letterSpacing: 0, width: '100%' }}
+                    />
+                  )}
                 </label>
               ))}
             </div>
 
-            <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '0.75rem', marginTop: '1.5rem' }}>
-              <button type="button" onClick={() => setIsModalOpen(false)} style={actionBtnStyle}>Cancel</button>
-              <button type="submit" disabled={saving} style={{ ...primaryBtnStyle, opacity: saving ? 0.7 : 1 }}>{saving ? 'Saving...' : 'Save Product'}</button>
+            <div style={{ 
+              display: 'flex', 
+              justifyContent: 'flex-end', 
+              gap: '0.75rem', 
+              marginTop: '1.25rem',
+              position: 'sticky',
+              bottom: 0,
+              background: 'white',
+              paddingTop: '0.75rem',
+              borderTop: '1px solid #F1F5F9',
+              zIndex: 10
+            }}>
+              <button type="button" onClick={() => setIsModalOpen(false)} style={{ ...actionBtnStyle, padding: '0.5rem 1rem' }}>Cancel</button>
+              <button type="submit" disabled={saving} style={{ ...primaryBtnStyle, padding: '0.5rem 1.25rem', opacity: saving ? 0.7 : 1 }}>{saving ? 'Saving...' : 'Save Product'}</button>
             </div>
           </form>
         </div>
